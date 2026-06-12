@@ -1,7 +1,7 @@
 // Environment loading and validation
 import 'dotenv/config';
 
-const requiredEnv = ['TELEGRAM_BOT_TOKEN'];
+const requiredEnv = ['TELEGRAM_BOT_TOKEN','OPENAI_API_KEY'];
 
 for (const key of requiredEnv) {
   if (!process.env[key]) {
@@ -11,4 +11,5 @@ for (const key of requiredEnv) {
 
 export const env = {
   TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
 };

@@ -1,15 +1,13 @@
+import 'dotenv/config';
 import { runAssistantTurn } from '../src/app/runAssistantTurn.js';
 
 // test script to simulate agents and tools are working together correctly without needing to send actual Telegram messages: modify the `text` variable to test different inputs and see how the agents respond.
-const text = process.argv.slice(2).join(' ') || 'Create a task to review my expenses tomorrow';
-
 const result = await runAssistantTurn({
-  chatId: 'local-test-chat',
-  userId: 'local-test-user',
+  chatId: 'test-chat',
+  userId: 'test-user',
   username: 'local',
-  text,
-  messageId: 'local-test-message',
+  text: process.argv.slice(2).join(' ') || 'hello',
+  messageId: 'test-message',
 });
 
-console.log(result);
-
+console.log(result.text);

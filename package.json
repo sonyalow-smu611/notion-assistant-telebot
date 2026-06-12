@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "set:webhook": "node scripts/setTelegramWebhook.js"
+    "set:webhook": "node scripts/setTelegramWebhook.js",
+    "test:agent": "node scripts/testAgentTurn.js"
   },
   "keywords": [],
   "author": "",
