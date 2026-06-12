@@ -1,0 +1,23 @@
+{
+  "name": "notion-telebot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "set:webhook": "node scripts/setTelegramWebhook.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@notionhq/client": "^5.22.0",
+    "@openai/agents": "^0.11.6",
+    "@supabase/supabase-js": "^2.108.1",
+    "dotenv": "^17.4.2",
+    "openai": "^6.42.0",
+    "telegraf": "^4.16.3",
+    "zod": "^4.4.3"
+  }
+}
