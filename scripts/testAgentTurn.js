@@ -10,4 +10,4 @@ const result = await runAssistantTurn({
   messageId: 'test-message',
 });
 
-console.log(result.text);
+console.log(result.text, result.agentName);
