@@ -1,6 +1,5 @@
 import { tool } from '@openai/agents';
 import { z } from 'zod';
-import { env } from '../config/env.js';
 import { createTask } from '../integrations/notion/taskDatabase.js';
 
 // Use one timezone consistently for relative dates like "today" and "tomorrow".
@@ -56,20 +55,14 @@ export function createTaskTool() {
         .optional()
         .nullable()
         .describe('Optional due date as YYYY-MM-DD, today, or tomorrow.'),
-      status: z
-        .string()
-        .optional()
-        .nullable()
-        .describe('Optional initial status. Defaults to Not Started.'),
     }).strict(),
 
-    async execute({ title, dueDate, status }) {
+    async execute({ title, dueDate }) {
       const resolvedDueDate = resolveDueDate(dueDate);
 
       const task = await createTask({
         title,
         dueDate: resolvedDueDate,
-        status: status || env.NOTION_TASK_DEFAULT_STATUS,
       });
 
       // Return structured text so the agent can confirm the exact result.
