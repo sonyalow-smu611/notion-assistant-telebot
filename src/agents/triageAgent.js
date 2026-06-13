@@ -15,5 +15,5 @@ Examples:
 
 Route normal conversation to the General Agent.
 `.trim(),
-  handoffs: [generalAgent, taskManagerAgent],
+  handoffs: [taskManagerAgent, generalAgent],
 });
