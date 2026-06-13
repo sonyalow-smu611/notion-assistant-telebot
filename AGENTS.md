@@ -239,6 +239,40 @@ Keep memory separate from raw database access.
 
 Do not add abstractions unless they clarify a real boundary or reduce real duplication.
 
+## Working Behavior Rules
+
+Use the guidance from `rules.md` as the default working behavior for coding tasks.
+
+Think before coding:
+
+- State assumptions explicitly when they matter.
+- If multiple interpretations exist, present them instead of choosing silently.
+- If a simpler approach exists, mention it.
+- If something is unclear enough to risk the wrong change, stop and ask.
+
+Favor simplicity:
+
+- Write the minimum code that solves the requested problem.
+- Do not add speculative features, single-use abstractions, or unrequested configurability.
+- Do not add error handling for impossible scenarios.
+- If an implementation is much larger than the problem calls for, simplify it.
+
+Make surgical changes:
+
+- Touch only the files and lines needed for the request.
+- Do not refactor, reformat, or improve adjacent code unless required.
+- Match existing style, even when a different style might be preferable.
+- Mention unrelated dead code or issues instead of deleting them.
+- Remove only imports, variables, functions, or files made unused by your own change.
+
+Work toward verifiable goals:
+
+- Define success criteria for non-trivial work.
+- For bugs, prefer a reproducing test or command before the fix when practical.
+- For validation changes, verify invalid and valid paths when practical.
+- For refactors, verify behavior before and after when practical.
+- For multi-step tasks, share a brief plan with checks.
+
 ## Testing Guidance
 
 When adding behavior, prefer focused tests around:
@@ -250,4 +284,3 @@ When adding behavior, prefer focused tests around:
 - Telegram update parsing.
 
 Use mocks for Notion, Supabase, Telegram, and OpenAI in unit tests.
-

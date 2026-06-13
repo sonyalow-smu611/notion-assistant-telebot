@@ -1,4 +1,5 @@
 import { Agent } from '@openai/agents';
+import { financeAgent } from './financeAgent.js';
 import { generalAgent } from './generalAgent.js';
 import { taskManagerAgent } from './taskManagerAgent.js';
 
@@ -13,7 +14,13 @@ Examples:
 - "add a task to call Alex"
 - "remind me to submit the form" should be treated as task creation for now.
 
+Route expense tracking requests to the Finance Agent.
+Examples:
+- "spent $12 on lunch"
+- "log 25 for a taxi"
+- "add an expense for movie tickets, 18 dollars"
+
 Route normal conversation to the General Agent.
 `.trim(),
-  handoffs: [taskManagerAgent, generalAgent],
+  handoffs: [taskManagerAgent, financeAgent, generalAgent],
 });

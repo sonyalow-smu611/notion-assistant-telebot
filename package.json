@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "diagnose:tasks": "node scripts/diagnoseTaskNotion.js",
     "set:webhook": "node scripts/setTelegramWebhook.js",
     "test:agent": "node scripts/testAgentTurn.js"
   },
