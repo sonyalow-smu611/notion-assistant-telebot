@@ -20,6 +20,11 @@ function findConfiguredProperty(properties, configuredName, expectedType) {
   ))?.[0];
 }
 
+function findPropertyName(properties, configuredName, expectedType) {
+  return findConfiguredProperty(properties, configuredName, expectedType)
+    || Object.entries(properties).find(([, property]) => property.type === expectedType)?.[0];
+}
+
 function richText(content) {
   return [
     {
@@ -95,7 +100,7 @@ function buildChildren({ url, summary, description, extractionNotes }) {
 }
 
 function buildLinkProperties({ link, dataSourceProperties }) {
-  const titlePropertyName = findConfiguredProperty(
+  const titlePropertyName = findPropertyName(
     dataSourceProperties,
     env.NOTION_LINK_TITLE_PROPERTY,
     'title',
