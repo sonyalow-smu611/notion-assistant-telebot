@@ -54,5 +54,4 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 5. Include comments throughout your code to explain the purpose of each function or variable. This will help others understand your reasoning and make it easier for them to review your code.
 
 
-
 These guidelines are working if: fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
