@@ -10,6 +10,7 @@ This assistant currently supports:
 - Expense logging to a Notion finance database
 - Calendar event creation in a Notion calendar database
 - Task creation in a Notion tasks database
+- URL saving and summarization in a Notion links database
 - Conversation persistence in Supabase
 - OpenAI Agents SDK tracing
 
@@ -50,6 +51,7 @@ src/
     financeAgent.js
     calendarAgent.js
     taskManagerAgent.js
+    linkCaptureAgent.js
 
   app/
     handleTelegramUpdate.js
@@ -63,6 +65,7 @@ src/
     openai/
     supabase/
     telegram/
+    web/
 
   memory/
     conversationMemory.js
@@ -71,6 +74,7 @@ src/
     financeTools.js
     calendarTools.js
     taskTools.js
+    linkTools.js
     memoryTools.js
 
   utils/
@@ -88,6 +92,7 @@ Routes:
 - Expense requests -> Finance Agent
 - Calendar/event requests -> Calendar Agent
 - Task/reminder requests -> Task Manager Agent
+- URL messages -> Link Capture Agent
 - Normal conversation -> General Agent
 
 ### Finance Agent
@@ -150,6 +155,24 @@ Example:
 add a task to review my budget tomorrow
 ```
 
+### Link Capture Agent
+
+Saves each URL in a Telegram message to a Notion links database with a public-content summary.
+
+Supported v1 extraction:
+
+```txt
+Public webpages
+Public GitHub repositories
+Public metadata from social links when available
+```
+
+Example:
+
+```txt
+https://github.com/openai/openai-node
+```
+
 ### General Agent
 
 Handles normal assistant conversation. It does not currently have tools.
@@ -185,6 +208,15 @@ npm run diagnose:tasks
 This project is designed for Vercel serverless functions.
 
 Deploy to Vercel, configure the environment variables in the Vercel dashboard, then register the Telegram webhook against the deployed `/api/telegram` endpoint.
+
+Required Notion data source IDs include:
+
+```txt
+NOTION_TASKS_DATA_SOURCE_ID
+NOTION_FINANCE_DATA_SOURCE_ID
+NOTION_CALENDAR_DATA_SOURCE_ID
+NOTION_LINKS_DATA_SOURCE_ID
+```
 
 Example:
 
