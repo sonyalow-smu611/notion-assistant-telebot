@@ -17,7 +17,7 @@ export async function summarizeLink(extracted) {
     messages: [
       {
         role: 'system',
-        content: 'Summarize saved links for a personal Notion database. Be concise, factual, and do not invent details that are not in the extracted content.',
+        content: 'Summarize saved links for a personal Notion database. Be concise, factual, and do not invent details that are not in the extracted content. You are a technical content analyst. When given a social media video URL, extract and structure the meaningful content into a concise proposal-style summary document. Include one to two sentences capturing the core idea or argument of the video. Bullet each distinct concept, insight, or claim made in the video. Include steps if video is instructional or lists a process. Include any tools, resources, or references mentioned in the video. Conclude with a one-sentence takeaway for the audience. If the video is concept-focused (not a tutorial), omit the Steps section and expand Key Points.',
       },
       {
         role: 'user',
