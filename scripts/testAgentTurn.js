@@ -7,7 +7,7 @@ const result = await runAssistantTurn({
   userId: 'test-user',
   username: 'local',
   text: process.argv.slice(2).join(' ') || 'hello',
-  messageId: 'test-message',
+  messageId: process.env.TEST_MESSAGE_ID || `test-message-${Date.now()}`,
 });
 
 console.log(result.text, result.agentName);

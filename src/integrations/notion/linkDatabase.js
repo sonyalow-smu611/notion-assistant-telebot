@@ -1,6 +1,8 @@
 import { env } from '../../config/env.js';
 import { notion } from './client.js';
 
+const NOTION_TEXT_LIMIT = 2000;
+
 async function getLinkDataSourceProperties() {
   const dataSource = await notion.dataSources.retrieve({
     data_source_id: env.NOTION_LINKS_DATA_SOURCE_ID,
@@ -30,19 +32,26 @@ function richText(content) {
     {
       type: 'text',
       text: {
-        content: String(content || '').slice(0, 2000),
+        content: String(content || '').slice(0, NOTION_TEXT_LIMIT),
       },
     },
   ];
 }
 
+function textChunks(content) {
+  const text = String(content || '').trim();
+  const chunks = [];
+
+  for (let index = 0; index < text.length; index += NOTION_TEXT_LIMIT) {
+    chunks.push(text.slice(index, index + NOTION_TEXT_LIMIT));
+  }
+
+  return chunks.length ? chunks : [''];
+}
+
 function buildTextProperty(propertyType, content) {
   if (propertyType === 'rich_text') {
     return { rich_text: richText(content) };
-  }
-
-  if (propertyType === 'url') {
-    return { url: content };
   }
 
   return null;
@@ -65,6 +74,10 @@ function buildOptionProperty(propertyType, value) {
 }
 
 function addOptionalProperty(properties, dataSourceProperties, configuredName, expectedTypes, value, builder) {
+  if (!value) {
+    return;
+  }
+
   for (const expectedType of expectedTypes) {
     const propertyName = findConfiguredProperty(dataSourceProperties, configuredName, expectedType);
 
@@ -90,16 +103,11 @@ function paragraph(content) {
   };
 }
 
-function buildChildren({ url, summary, description, extractionNotes }) {
-  return [
-    paragraph(`URL: ${url}`),
-    paragraph(summary),
-    description ? paragraph(`Description: ${description}`) : null,
-    extractionNotes ? paragraph(`Extraction notes: ${extractionNotes}`) : null,
-  ].filter(Boolean);
+function buildChildren({ summary }) {
+  return textChunks(summary).map((chunk) => paragraph(chunk));
 }
 
-function buildLinkProperties({ link, dataSourceProperties }) {
+function buildLinkSummaryProperties({ linkSummary, dataSourceProperties }) {
   const titlePropertyName = findPropertyName(
     dataSourceProperties,
     env.NOTION_LINK_TITLE_PROPERTY,
@@ -110,42 +118,29 @@ function buildLinkProperties({ link, dataSourceProperties }) {
     throw new Error('Links data source must have a title property.');
   }
 
-  const urlPropertyName = findConfiguredProperty(
-    dataSourceProperties,
-    env.NOTION_LINK_URL_PROPERTY,
-    'url',
-  ) || findConfiguredProperty(
-    dataSourceProperties,
-    env.NOTION_LINK_URL_PROPERTY,
-    'rich_text',
-  );
-
-  if (!urlPropertyName) {
-    throw new Error('Links data source must have a URL property.');
-  }
-
   const properties = {
     [titlePropertyName]: {
-      title: richText(link.title),
+      title: richText(linkSummary.title),
     },
-    [urlPropertyName]: buildTextProperty(dataSourceProperties[urlPropertyName].type, link.url),
   };
 
-  addOptionalProperty(properties, dataSourceProperties, env.NOTION_LINK_SUMMARY_PROPERTY, ['rich_text'], link.summary, buildTextProperty);
-  addOptionalProperty(properties, dataSourceProperties, env.NOTION_LINK_SOURCE_TYPE_PROPERTY, ['select', 'multi_select', 'rich_text'], link.sourceType, buildOptionProperty);
-  addOptionalProperty(properties, dataSourceProperties, env.NOTION_LINK_DOMAIN_PROPERTY, ['rich_text', 'url'], link.domain, buildTextProperty);
-  addOptionalProperty(properties, dataSourceProperties, env.NOTION_LINK_DATE_SAVED_PROPERTY, ['date'], link.dateSaved, () => ({ date: { start: link.dateSaved } }));
-  addOptionalProperty(properties, dataSourceProperties, env.NOTION_LINK_STATUS_PROPERTY, ['status', 'select', 'rich_text'], link.status, buildOptionProperty);
+  addOptionalProperty(properties, dataSourceProperties, env.NOTION_LINK_SUMMARY_PROPERTY, ['rich_text'], linkSummary.summary, buildTextProperty);
+  addOptionalProperty(properties, dataSourceProperties, env.NOTION_LINK_DATE_SAVED_PROPERTY, ['date'], linkSummary.dateSaved, () => ({ date: { start: linkSummary.dateSaved } }));
+  addOptionalProperty(properties, dataSourceProperties, env.NOTION_LINK_STATUS_PROPERTY, ['status', 'select', 'rich_text'], linkSummary.status, buildOptionProperty);
 
   return properties;
 }
 
-export async function createLinkPage(link) {
-  const cleanUrl = link.url?.trim();
-  const cleanTitle = link.title?.trim() || cleanUrl;
+export async function createLinkSummaryPage(linkSummary) {
+  const cleanTitle = linkSummary.title?.trim();
+  const cleanSummary = linkSummary.summary?.trim();
 
-  if (!cleanUrl) {
-    throw new Error('URL is required.');
+  if (!cleanTitle) {
+    throw new Error('Title is required.');
+  }
+
+  if (!cleanSummary) {
+    throw new Error('Summary is required.');
   }
 
   const dataSourceProperties = await getLinkDataSourceProperties();
@@ -153,27 +148,22 @@ export async function createLinkPage(link) {
     parent: {
       data_source_id: env.NOTION_LINKS_DATA_SOURCE_ID,
     },
-    properties: buildLinkProperties({
-      link: {
-        ...link,
+    properties: buildLinkSummaryProperties({
+      linkSummary: {
+        ...linkSummary,
         title: cleanTitle,
-        url: cleanUrl,
+        summary: cleanSummary,
       },
       dataSourceProperties,
     }),
     children: buildChildren({
-      url: cleanUrl,
-      summary: link.summary,
-      description: link.description,
-      extractionNotes: link.extractionNotes,
+      summary: cleanSummary,
     }),
   });
 
   return {
     id: page.id,
-    url: page.url,
     title: cleanTitle,
-    sourceUrl: cleanUrl,
-    status: link.status,
+    status: linkSummary.status,
   };
 }

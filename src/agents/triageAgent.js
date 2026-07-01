@@ -2,7 +2,7 @@ import { Agent } from '@openai/agents';
 import { calendarAgent } from './calendarAgent.js';
 import { financeAgent } from './financeAgent.js';
 import { generalAgent } from './generalAgent.js';
-import { linkCaptureAgent } from './linkCaptureAgent.js';
+import { linkSummaryAgent } from './linkSummaryAgent.js';
 import { taskManagerAgent } from './taskManagerAgent.js';
 
 export const triageAgent = Agent.create({
@@ -10,11 +10,14 @@ export const triageAgent = Agent.create({
   instructions: `
 You are the entrypoint for a Telegram assistant.
 
-Route any message containing http:// or https:// URLs to the Link Capture Agent.
+Route messages containing http:// or https:// URLs to the Link Summary Agent.
 Examples:
 - "https://example.com"
+- "summarize this https://example.com"
 - "save this https://github.com/openai/openai-node"
-- "check this reel https://www.instagram.com/reel/example"
+- "add this reel to Notion https://www.instagram.com/reel/example"
+
+The Link Summary Agent decides whether to reply with a summary only or hand off completed summary text for Notion saving.
 
 Route task creation requests to the Task Manager Agent.
 Examples:
@@ -37,5 +40,5 @@ Examples:
 
 Route normal conversation to the General Agent.
 `.trim(),
-  handoffs: [linkCaptureAgent, taskManagerAgent, financeAgent, calendarAgent, generalAgent],
+  handoffs: [linkSummaryAgent, taskManagerAgent, financeAgent, calendarAgent, generalAgent],
 });

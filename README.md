@@ -10,7 +10,7 @@ This assistant currently supports:
 - Expense logging to a Notion finance database
 - Calendar event creation in a Notion calendar database
 - Task creation in a Notion tasks database
-- URL saving and summarization in a Notion links database
+- URL summarization, with optional summary-only saving to a Notion links database
 - Conversation persistence in Supabase
 - OpenAI Agents SDK tracing
 
@@ -51,6 +51,7 @@ src/
     financeAgent.js
     calendarAgent.js
     taskManagerAgent.js
+    linkSummaryAgent.js
     linkCaptureAgent.js
 
   app/
@@ -74,6 +75,7 @@ src/
     financeTools.js
     calendarTools.js
     taskTools.js
+    linkSummaryTools.js
     linkTools.js
     memoryTools.js
 
@@ -92,7 +94,7 @@ Routes:
 - Expense requests -> Finance Agent
 - Calendar/event requests -> Calendar Agent
 - Task/reminder requests -> Task Manager Agent
-- URL messages -> Link Capture Agent
+- URL messages -> Link Summary Agent
 - Normal conversation -> General Agent
 
 ### Finance Agent
@@ -155,9 +157,9 @@ Example:
 add a task to review my budget tomorrow
 ```
 
-### Link Capture Agent
+### Link Summary Agent
 
-Saves each URL in a Telegram message to a Notion links database with a public-content summary.
+Summarizes each URL in a Telegram message. If the user explicitly asks to save the result, it hands completed summary text to the Link Capture Agent.
 
 Supported v1 extraction:
 
@@ -172,6 +174,10 @@ Example:
 ```txt
 https://github.com/openai/openai-node
 ```
+
+### Link Capture Agent
+
+Saves completed summary text to the Notion links database. It does not fetch, parse, validate, summarize, or store URL values.
 
 ### General Agent
 
