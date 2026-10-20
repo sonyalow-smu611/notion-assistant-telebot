@@ -1,6 +1,6 @@
 # Notion Telebot
 
-A Telegram-based personal assistant hosted on Vercel. The bot receives Telegram messages, routes them through OpenAI Agents SDK specialists, and writes structured data to Notion and Supabase.
+A Telegram-based personal assistant hosted on Vercel. The bot receives Telegram messages, routes them through OpenAI Agents SDK specialists, and writes structured data to Notion.
 
 ## What It Does
 
@@ -11,7 +11,6 @@ This assistant currently supports:
 - Calendar event creation in a Notion calendar database
 - Task creation in a Notion tasks database
 - URL summarization, with optional summary-only saving to a Notion links database
-- Conversation persistence in Supabase
 - OpenAI Agents SDK tracing
 
 ## Architecture
@@ -26,11 +25,11 @@ Telegram webhook
 -> triageAgent
 -> specialist agent handoff
 -> tool
--> Notion API / Supabase
+-> Notion API
 -> Telegram reply
 ```
 
-The API route is intentionally thin. Agent orchestration, memory, integrations, and tool logic live under `src/`.
+The API route is intentionally thin. Agent orchestration, integrations, and tool logic live under `src/`.
 
 ## Project Structure
 
@@ -64,12 +63,8 @@ src/
   integrations/
     notion/
     openai/
-    supabase/
     telegram/
     web/
-
-  memory/
-    conversationMemory.js
 
   tools/
     financeTools.js
@@ -233,7 +228,7 @@ npm run set:webhook -- https://your-vercel-domain.vercel.app/api/telegram
 ## Notes
 
 - Notion is accessed directly through the Notion API.
-- Supabase is used for durable memory and conversation records.
 - The app assumes serverless stateless execution.
+- Each Telegram update is processed independently; there is no conversation persistence or duplicate webhook deduplication.
 - Destructive or broad writes should require confirmation before implementation.
 - The current `npm test` script is a placeholder and does not run automated tests yet.

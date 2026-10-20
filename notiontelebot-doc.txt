@@ -21,7 +21,6 @@ TERMINAL COMMANDS (package.json)
 Npm install:
 - dotenv
 - @openai/agents
-- @supabase/supabase-js 
 - @notionhq/client
 - openai
 - telegraf
@@ -85,16 +84,15 @@ export async function sendTelegramMessage(chatId, text) {
 	return: sends output to telebot 
 }
 
------------------------------------------
+----------------------------------------
 
-SAVING CONVO MEMORY AND CONNECTING TO SUPABASE + LOCAL MEMORY FOR AGENT USE  
+INDEPENDENT TELEGRAM TURN PROCESSING
 
 Purpose:
-- save every completed Telegram assistant turn so the project has durable conversation history
-- keep useful metadata from Telegram, such as userId, chatId, and messageId
-- store which agent answered, so we can trace whether the General, Finance, Calendar, or Task agent handled the message
-- provide a local memory wrapper that can later retrieve recent turns and pass them back into the agent as context
-- use Supabase as durable storage because Vercel serverless functions are stateless and cannot rely on in-memory history
+- process each Telegram text update independently
+- pass only the current message text into the triage agent
+- send the agent output back to the Telegram chat
+- avoid conversation persistence and duplicate webhook deduplication
 
 High level workflow:
 
@@ -103,172 +101,34 @@ Telegram message
 -> handleTelegramUpdate passes clean message object into runAssistantTurn
 -> runAssistantTurn runs the Triage Agent through runAgentTurn
 -> agent produces final response text + last agent name
--> runAssistantTurn calls saveConversationTurn
--> saveConversationTurn calls insertConversationTurn
--> insertConversationTurn writes the turn into Supabase conversation_turns table
 -> Telegram reply is sent back to the same chat
 
-Important idea:
-- Supabase is the permanent storage layer
-- src/memory/conversationMemory.js is the local memory layer for the assistant
-- src/integrations/supabase/conversations.js is the raw database access layer
-- agent/app code should use the memory layer, not call Supabase directly, unless there is a clear reason
-
 ----------------------------------------
 
-Files touched / created:
+Files:
 
-1. src/config/env.js
-
-Purpose:
-- loads and validates environment variables
-- stores Supabase connection details in one central env object
-- prevents direct process.env reads from being scattered across the codebase
-
-Important env vars:
-- SUPABASE_URL
-- SUPABASE_SERVICE_ROLE_KEY
-
-These are required so the backend can connect to Supabase from Vercel/serverless code.
-
-----------------------------------------
-
-2. src/integrations/supabase/client.js
-
-Purpose:
-- creates the Supabase client once
-- uses env.SUPABASE_URL and env.SUPABASE_SERVICE_ROLE_KEY
-- exports the client for Supabase repository files to use
-
-Function / export:
-
-export const supabase = createClient(
-  env.SUPABASE_URL,
-  env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-Why this exists:
-- this keeps Supabase setup in one place
-- other files do not need to know how the Supabase client is created
-- if Supabase setup changes later, this is the main file to update
-
-----------------------------------------
-
-3. src/integrations/supabase/conversations.js
-
-Purpose:
-- contains low-level database functions for the conversation_turns table
-- this file talks directly to Supabase
-- it does not contain assistant logic or Telegram logic
-
-Function: getRecentConversationTurns(userId, limit = 20)
-
-What it does:
-- reads recent rows from the conversation_turns table
-- filters by user_id so each user only gets their own memory
-- selects input, output, agent_name, and created_at
-- sorts by newest first in the database
-- limits the result to 20 rows by default
-- reverses the result before returning it so memory is in normal chronological order
-
-Why it matters:
-- this lets the assistant retrieve recent conversation history
-- recent memory can be used to make the assistant feel more continuous and less repetitive
-- for example, if the user previously talked about a task or expense, future agent runs can use that context
-
-Function: insertConversationTurn(turn)
-
-What it does:
-- inserts one completed assistant turn into the conversation_turns table
-- stores:
-  - user_id
-  - chat_id
-  - message_id
-  - input
-  - output
-  - agent_name
-- returns the inserted row
-- throws an error if Supabase fails
-
-Why it matters:
-- this is the function that actually saves conversation memory permanently
-- it keeps a record of what the user said, what the assistant replied, and which agent handled it
-
-Expected Supabase table:
-
-conversation_turns
-- id
-- user_id
-- chat_id
-- message_id
-- input
-- output
-- agent_name
-- created_at
-
-----------------------------------------
-
-4. src/memory/conversationMemory.js
-
-Purpose:
-- acts as the assistant's memory layer
-- wraps raw Supabase database functions with memory-specific names
-- keeps the meaning of "conversation memory" separate from the database implementation
-
-Function: getConversationMemory(userId)
-
-What it does:
-- calls getRecentConversationTurns(userId)
-- converts raw database rows into a cleaner local memory format
-
-Returns:
-- user: previous user message
-- assistant: previous assistant response
-- agentName: agent that answered
-- createdAt: when the turn was saved
-
-Why it matters:
-- this creates a clean format that agents can use as context
-- the rest of the app does not need to know the exact Supabase column names
-- if the database schema changes later, this file can translate it into the same memory shape
-
-Function: saveConversationTurn(turn)
-
-What it does:
-- calls insertConversationTurn(turn)
-- saves the completed user input + assistant output pair into Supabase
-
-Why it matters:
-- app code calls this memory function instead of directly calling Supabase
-- this keeps the app flow clean and keeps database access behind the memory boundary
-
-----------------------------------------
-
-5. src/integrations/telegram/parseUpdate.js
+1. src/integrations/telegram/parseUpdate.js
 
 Purpose:
 - converts raw Telegram updates into a clean message object for the app
-- extracts both the text and metadata needed for memory
+- extracts text and metadata needed by the request flow
 
 Function: parseTelegramUpdate(update)
 
 Returns:
 - chatId: Telegram chat ID, used to send the reply back to the correct chat
-- userId: Telegram user ID, used to group memory by user
+- userId: Telegram user ID, useful for tracing or future features
 - username: Telegram username, useful as metadata
 - text: the actual message the user typed
-- messageId: Telegram message ID, saved for traceability
+- messageId: Telegram message ID, useful for tracing or future features
 - raw: the original Telegram update, kept in case deeper debugging is needed
 
 Why it matters:
-- memory depends on metadata from Telegram
-- without userId, we cannot save or retrieve memory per user
 - without chatId, we cannot reply to the correct Telegram chat
-- without messageId, debugging exact Telegram messages is harder
 
 ----------------------------------------
 
-6. src/app/handleTelegramUpdate.js
+2. src/app/handleTelegramUpdate.js
 
 Purpose:
 - coordinates one incoming Telegram update
@@ -282,18 +142,16 @@ Flow:
 - calls runAssistantTurn(message)
 - calls sendTelegramMessage(message.chatId, reply.text)
 
-Why it matters for memory:
-- it passes the parsed message object into runAssistantTurn
-- that message object contains the metadata needed to save the conversation turn later
+Why it matters:
+- it keeps the webhook route thin and app flow explicit
 
 ----------------------------------------
 
-7. src/app/runAssistantTurn.js
+3. src/app/runAssistantTurn.js
 
 Purpose:
 - manages one complete assistant turn
 - runs the Triage Agent
-- saves the completed conversation turn to Supabase
 - returns the final reply text and agent name
 
 Function: runAssistantTurn(message)
@@ -303,93 +161,14 @@ Flow:
 - calls runAgentTurn(triageAgent, message.text)
 - receives result.text from the agent
 - reads result.raw.lastAgent?.name to know which agent handled the request
-- calls saveConversationTurn(...)
 - returns:
   - text: result.text
   - agentName: result.raw.lastAgent?.name
 
-Conversation data saved:
-- userId: message.userId
-- chatId: message.chatId
-- messageId: String(message.messageId)
-- input: message.text
-- output: result.text
-- agentName: result.raw.lastAgent?.name
-
 Why it matters:
-- this is the point where the project has both sides of the conversation:
-  - the user's input
-  - the assistant's final output
-- that makes it the correct place to save a complete conversation turn
-- saving happens after the agent responds, because the output and final agent name are only known after the agent run finishes
+- this is the point where the user's input becomes an agent response
+- no persistence or deduplication happens here
 
-----------------------------------------
-
-How local memory can be used by agents:
-
-Current memory saving is already connected through runAssistantTurn.
-
-The read side is prepared through:
-- getConversationMemory(userId)
-
-When connected into the agent flow, the app can:
-- retrieve recent memory for the Telegram user
-- format it as context
-- pass it into the agent with the current message
-
-Example future flow:
-
-runAssistantTurn(message)
--> getConversationMemory(message.userId)
--> build context from recent turns
--> runAgentTurn(triageAgent, context + current message)
--> saveConversationTurn(new completed turn)
-
-This means the assistant can remember recent conversation context without relying on Vercel memory or browser sessions.
-
-----------------------------------------
-
-Why Supabase is used:
-
-Vercel serverless functions are stateless. This means each Telegram webhook request may run in a fresh environment, so local variables cannot be trusted for long-term memory.
-
-Supabase solves this by storing conversation turns in a real database. Every time the user sends a Telegram message, the system can save the new turn and later retrieve previous turns by userId.
-
-This makes the assistant more reliable because memory survives redeploys, cold starts, and separate serverless executions.
-
-----------------------------------------
-
-Why metadata is saved:
-
-userId:
-- connects conversation memory to a specific Telegram user
-- prevents one user's memory from mixing with another user's memory
-
-chatId:
-- tells Telegram where to send the reply
-- useful for debugging which chat produced a conversation turn
-
-messageId:
-- identifies the exact Telegram message
-- useful for tracing, logs, and debugging duplicate or failed updates
-
-input:
-- stores what the user asked
-
-output:
-- stores what the assistant replied
-
-agentName:
-- stores which specialist handled the turn
-- useful for debugging routing decisions
-- helps confirm whether the triage agent handed off correctly
-
-created_at:
-- added by Supabase
-- lets the project retrieve recent conversation turns in order
-
-
- 
 -----------------------------------------
 
 CREATING SPECIALISED AGENTS AND CONNECTING TO NOTION 
@@ -439,7 +218,6 @@ Export async function createTask{
 	await notion.pages.create: create notion task page
 	return: structured output for agent to confirm task complete 
 }
-
 
 
 
