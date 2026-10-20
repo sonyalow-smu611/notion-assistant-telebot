@@ -26,7 +26,6 @@ src/
 ├── app/
 ├── config/
 ├── integrations/
-├── memory/
 ├── tools/
 └── utils/
 ```
@@ -76,6 +75,8 @@ generalAgent.js
 financeAgent.js
 calendarAgent.js
 taskManagerAgent.js
+linkSummaryAgent.js
+linkCaptureAgent.js
 ```
 
 The triage agent is the entrypoint for assistant turns. It should route or hand off to the best specialist agent.
@@ -87,6 +88,8 @@ Responsibilities:
 - `financeAgent`: expenses, finance tracking, and finance database actions.
 - `calendarAgent`: scheduling and Notion calendar database actions.
 - `taskManagerAgent`: task creation, task updates, planning, and task database actions.
+- `linkSummaryAgent`: summarizes URLs and hands save requests to `linkCaptureAgent`.
+- `linkCaptureAgent`: saves a completed link summary and its URL to the Notion links database.
 
 ## Tool Rules
 
@@ -102,7 +105,8 @@ Current tool files:
 financeTools.js
 calendarTools.js
 taskTools.js
-memoryTools.js
+linkSummaryTools.js
+linkTools.js
 ```
 
 Tools should expose safe, narrow actions to agents. They should not contain raw API client setup.
@@ -164,9 +168,12 @@ src/integrations/
 │   ├── client.js
 │   ├── parseUpdate.js
 │   └── sendMessage.js
-└── openai/
-    ├── client.js
-    └── runner.js
+├── openai/
+│   ├── client.js
+│   ├── runner.js
+│   └── linkSummarizer.js
+└── web/
+    └── linkExtractor.js
 ```
 
 Integration modules should be boring and specific:

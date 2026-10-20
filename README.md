@@ -1,262 +1,213 @@
 # Notion Telebot
 
-A Telegram-based personal assistant hosted on Vercel. The bot receives Telegram messages, routes them through OpenAI Agents SDK specialists, and writes structured data to Notion through the hosted Notion MCP server.
+A personal assistant you message on **Telegram** that saves your tasks, expenses, calendar events and links into **Notion**.
 
-## What It Does
+It runs as a serverless function on **Vercel**. **OpenAI Agents SDK** routes each message to a specialist agent, and every write reaches Notion through the hosted **Notion MCP** server.
 
-This assistant currently supports:
+| You send | It saves to Notion |
+|---|---|
+| `add a task to call Alex tomorrow` | **Tasks**: "Call Alex", due tomorrow |
+| `spent $12 on lunch` | **Finance**: lunch, 12, food |
+| `dinner with Sam this saturday` | **Calendar**: "Dinner with Sam", next Saturday |
+| `save this https://github.com/openai/openai-node` | **Links**: title, summary and URL |
+| `https://example.com` | Nothing; it replies with a summary |
+| `hello` | Nothing; it chats normally |
 
-- General Telegram conversation
-- Expense logging to a Notion finance database
-- Calendar event creation in a Notion calendar database
-- Task creation in a Notion tasks database
-- URL summarization, with optional saving (title, summary, and URL) to a Notion links database
-- OpenAI Agents SDK tracing
+---
 
-## Architecture
+## Contents
 
-Request flow:
+- [How it works](#how-it-works)
+- [Using the bot](#using-the-bot)
+- [Project structure](#project-structure)
+- [Setup](#setup)
+- [Scripts](#scripts)
+- [Testing](#testing)
+- [Troubleshooting](#troubleshooting)
+- [Limitations](#limitations)
 
-```txt
-Telegram webhook
--> api/telegram.js
--> src/app/handleTelegramUpdate.js
--> src/app/runAssistantTurn.js
--> triageAgent
--> specialist agent handoff
--> tool
--> src/integrations/notion/*Database.js
--> Notion MCP (notion-create-pages)
--> Telegram reply
+---
+
+## How it works
+
+```mermaid
+flowchart LR
+    TG[Telegram message] --> API[api/telegram.js]
+    API --> TRI[Triage Agent]
+    TRI --> TASK[Task Manager Agent]
+    TRI --> FIN[Finance Agent]
+    TRI --> CAL[Calendar Agent]
+    TRI --> LS[Link Summary Agent]
+    TRI --> GEN[General Agent]
+    LS -->|save requests| LC[Link Capture Agent]
+    TASK & FIN & CAL & LC --> DB[Notion database modules]
+    DB --> MCP[(Notion MCP<br/>mcp.notion.com)]
+    MCP -.OAuth tokens.- REDIS[(Upstash Redis)]
 ```
 
-The API route is intentionally thin. Agent orchestration, integrations, and tool logic live under `src/`.
+1. **Telegram** sends each message to the Vercel webhook at `/api/telegram`.
+2. The **Triage Agent** decides what kind of request it is and hands it to one specialist agent.
+3. **Specialists only see small, validated tools**: `create_task`, `add_expense`, `create_calendar_event` and `save_link_summary`. These tools check inputs (dates, amounts, categories, URLs) before anything is written.
+4. **The tools call database modules**, which turn the input into a Notion MCP `notion-create-pages` call. Agents never get raw Notion access.
+5. **Notion MCP uses OAuth.** The bot's sign-in is stored in **Upstash Redis**, so every stateless Vercel function can reuse and refresh it.
+6. **The specialist's reply** goes back to the same Telegram chat.
 
-Agents only see narrow function tools (`create_task`, `add_expense`, `create_calendar_event`, `save_link_summary`). The database modules behind them call Notion MCP. Notion MCP uses OAuth; the bot's OAuth client and tokens are stored in Upstash Redis so stateless Vercel functions can reuse and refresh them.
+---
 
-## Project Structure
+## Using the bot
+
+**General rules**
+
+- Each message is handled **on its own**, and the bot doesn't remember earlier messages. If it asks you a question, reply with the **whole request** again, including the missing detail.
+- Send **one request per message**.
+- The bot can only **create** entries. It can't list, edit or delete them.
+- Relative dates like "today" and "tomorrow" use **Singapore time** (`Asia/Singapore`).
+
+| Database | Say something like | Rules |
+|---|---|---|
+| **Tasks** | "add / create / remember a task to…", "remind me to…" | Due dates: `today`, `tomorrow` or `YYYY-MM-DD`. Any other date phrase creates the task with **no** due date. New tasks get category `general` and an unticked status. |
+| **Finance** | "spent $12 on lunch", "log 25 for a taxi" | Needs a description and an amount. Category must be one of `food`, `entertainment`, `gifts`, `transport`, `miscellaneous` or `work`. Only the number is stored, not the currency. |
+| **Calendar** | "dinner with Sam this saturday", "photoshoot on July 22" | Dates: `today`, `tomorrow`, `this/next <weekday>`, `<Month> <day>` or `YYYY-MM-DD`. Times are not stored. |
+| **Links** | "save this https://…", "add this to Notion https://…" | A link on its own only gets a summary. A save word ("save", "bookmark", "capture", "store", "add to Notion") is needed to write to Notion. Pages that need a login, such as Instagram or TikTok, may only give a short summary. |
+
+Anything else goes to the **General Agent**, which chats but has no Notion access.
+
+---
+
+## Project structure
 
 ```txt
 api/
-  telegram.js              # Vercel webhook endpoint
-
-scripts/
-  authorizeNotionMcp.js    # One-time Notion MCP OAuth sign-in
-  diagnoseNotionMcp.js     # Check Notion MCP tools and database columns
-  setTelegramWebhook.js    # Register Telegram webhook URL
-  testAgentTurn.js         # Local agent turn test script
-
-test/                      # Unit tests (node --test), Notion MCP mocked
+  telegram.js                 # Vercel webhook: validates the request, hands off to app code
 
 src/
-  agents/
-    triageAgent.js
-    generalAgent.js
-    financeAgent.js
-    calendarAgent.js
-    taskManagerAgent.js
-    linkSummaryAgent.js
-    linkCaptureAgent.js
-
-  app/
-    handleTelegramUpdate.js
-    runAssistantTurn.js
-
-  config/
-    env.js
-
+  app/                        # One assistant turn: parse → run agents → reply
+  agents/                     # Triage + specialist agents (instructions, tools, handoffs)
+  tools/                      # Narrow, validated tools the agents can call
   integrations/
-    notion/                # Notion MCP client, OAuth provider, database modules
-    openai/
-    telegram/
-    upstash/               # Redis client for Notion MCP auth state
-    web/
+    notion/                   # Notion MCP client, OAuth provider, one module per database
+    upstash/                  # Redis client holding the Notion MCP sign-in
+    telegram/                 # Parse updates, send messages
+    openai/                   # OpenAI client, agent runner, link summarizer
+    web/                      # Public web page / GitHub content extraction for links
+  config/env.js               # All environment variables, validated in one place
+  utils/                      # Tracing helper, URL validation
 
-  tools/
-    financeTools.js
-    calendarTools.js
-    taskTools.js
-    linkSummaryTools.js
-    linkTools.js
-    memoryTools.js
-
-  utils/
-    tracing.js
-    validateUrl.js
+scripts/                      # Local helper commands (see Scripts)
+test/                         # Unit tests, Notion MCP mocked
+AGENTS.md                     # Architecture and coding rules for contributors and AI agents
 ```
 
-## Agents
+---
 
-### Triage Agent
+## Setup
 
-The entrypoint agent. It classifies each Telegram message and hands off to the right specialist.
+**You'll need:** Node.js 22.3+ (24 recommended), a Telegram bot token from [@BotFather](https://t.me/BotFather), an OpenAI API key, a Notion workspace with the four databases, and a Vercel project with Upstash Redis.
 
-Routes:
-
-- Expense requests -> Finance Agent
-- Calendar/event requests -> Calendar Agent
-- Task/reminder requests -> Task Manager Agent
-- URL messages -> Link Summary Agent
-- Normal conversation -> General Agent
-
-### Finance Agent
-
-Creates expense entries in Notion.
-
-Supported categories:
-
-```txt
-food
-entertainment
-gifts
-transport
-miscellaneous
-work
-```
-
-Example:
-
-```txt
-spent $12 on lunch
-```
-
-### Calendar Agent
-
-Creates calendar events in Notion.
-
-Supports simple date phrases such as:
-
-```txt
-today
-tomorrow
-this Saturday
-next Friday
-July 22
-YYYY-MM-DD
-```
-
-Example:
-
-```txt
-dinner with Sam tomorrow
-```
-
-### Task Manager Agent
-
-Creates tasks in Notion.
-
-Supports due dates for:
-
-```txt
-today
-tomorrow
-YYYY-MM-DD
-```
-
-Example:
-
-```txt
-add a task to review my budget tomorrow
-```
-
-### Link Summary Agent
-
-Summarizes each URL in a Telegram message. It always calls `summarize_url` before replying. If the user explicitly asks to save the result, it hands the title, completed summary, and original URL to the Link Capture Agent.
-
-Supported v1 extraction:
-
-```txt
-Public webpages
-Public GitHub repositories
-Public metadata from social links when available
-```
-
-Example:
-
-```txt
-https://github.com/openai/openai-node
-```
-
-### Link Capture Agent
-
-Saves the title, summary, and URL to the Notion links database (columns `Title`, `Summary`, `URL`). The full summary also goes in the page body. It does not fetch or summarize URLs itself.
-
-### General Agent
-
-Handles normal assistant conversation. It does not currently have tools.
-
-## Installation
+### 1. Install
 
 ```bash
 npm install
+cp .env.example .env
 ```
 
-## Local Scripts
+### 2. Prepare the Notion databases
 
-Set the Telegram webhook:
+The bot writes to these columns. The names must match exactly, including capital letters.
 
-```bash
-npm run set:webhook -- https://your-vercel-domain.vercel.app/api/telegram
-```
+| Database | Columns (type) |
+|---|---|
+| Tasks | `Task` (title), `Category` (select, with a `general` option), `Status` (checkbox), `Due Date` (date) |
+| Finance | `expense` (title), `amount` (number), `category` (select: food, entertainment, gifts, transport, miscellaneous, work) |
+| Calendar | `Event` (title), `Date` (date) |
+| Links | `Title` (title), `Summary` (text), `URL` (URL) |
 
-Test an agent turn locally:
+Different column names can be mapped with overrides such as `NOTION_CALENDAR_TITLE_PROPERTY=Name` (see [src/config/env.js](src/config/env.js)).
 
-```bash
-npm run test:agent -- spent $12 on lunch
-```
+Copy each database's **data source ID** into `.env`.
 
-Run unit tests:
+### 3. Add Upstash Redis
 
-```bash
-npm test
-```
+In your Vercel project, open **Storage → Upstash for Redis** and connect it. Vercel then adds `KV_REST_API_URL` and `KV_REST_API_TOKEN` to the project. Copy both into your local `.env` as well.
 
-Sign in to Notion MCP (one time, or again if the bot says the Notion connection expired):
+### 4. Sign in to Notion MCP (one time)
 
 ```bash
 npm run auth:notion
 ```
 
-Check the Notion MCP connection and that each database has the configured columns (`--create-test` also creates a diagnostic task):
+A browser opens Notion's consent page. Choose the workspace that holds your databases and click **Allow**. The bot registers itself, so there's no Notion integration or API key to create.
+
+### 5. Check everything is connected
 
 ```bash
-npm run diagnose:notion
+npm run diagnose:notion              # lists MCP tools, checks every configured column exists
+npm run test:agent -- spent $12 on lunch
 ```
 
-## Deployment
+### 6. Deploy
 
-This project is designed for Vercel serverless functions.
-
-Setup:
-
-1. Create an Upstash Redis database (for example through Vercel Storage), and put `KV_REST_API_URL` and `KV_REST_API_TOKEN` in `.env` and in Vercel.
-2. Run `npm run auth:notion` locally and approve access to the workspace that holds your databases.
-3. Run `npm run diagnose:notion` and fix any reported column-name mismatches with `NOTION_*_PROPERTY` overrides.
-4. Deploy to Vercel, configure the environment variables in the Vercel dashboard, then register the Telegram webhook against the deployed `/api/telegram` endpoint.
-
-Required environment variables:
-
-```txt
-TELEGRAM_BOT_TOKEN
-OPENAI_API_KEY
-NOTION_TASKS_DATA_SOURCE_ID
-NOTION_FINANCE_DATA_SOURCE_ID
-NOTION_CALENDAR_DATA_SOURCE_ID
-NOTION_LINKS_DATA_SOURCE_ID
-KV_REST_API_URL
-KV_REST_API_TOKEN
-```
-
-Example:
+Push to the branch Vercel deploys from, then point Telegram at the deployment:
 
 ```bash
-npm run set:webhook -- https://your-vercel-domain.vercel.app/api/telegram
+npm run set:webhook -- https://<your-project>.vercel.app/api/telegram
 ```
 
-## Notes
+### Environment variables
 
-- Notion is accessed through the hosted Notion MCP server (`https://mcp.notion.com/mcp`), not the Notion REST API.
-- The app assumes serverless stateless execution. Each Notion write opens a fresh MCP connection.
-- Each Telegram update is processed independently; there is no conversation persistence or duplicate webhook deduplication.
-- Destructive or broad writes should require confirmation before implementation.
-- `npm test` covers the Notion database mappings and link tool validation with Notion MCP mocked.
+| Variable | Required | Purpose |
+|---|---|---|
+| `TELEGRAM_BOT_TOKEN` | ✅ | Telegram bot token |
+| `OPENAI_API_KEY` | ✅ | Runs the agents and link summaries |
+| `NOTION_TASKS_DATA_SOURCE_ID` | ✅ | Tasks database |
+| `NOTION_FINANCE_DATA_SOURCE_ID` | ✅ | Finance database |
+| `NOTION_CALENDAR_DATA_SOURCE_ID` | ✅ | Calendar database |
+| `NOTION_LINKS_DATA_SOURCE_ID` | ✅ | Links database |
+| `KV_REST_API_URL`, `KV_REST_API_TOKEN` | ✅ | Upstash Redis, which stores the Notion MCP sign-in |
+| `NOTION_MCP_URL` | — | Defaults to `https://mcp.notion.com/mcp` |
+| `NOTION_MCP_REDIRECT_URI` | — | Defaults to `http://localhost:3999/callback` (used by `auth:notion`) |
+| `NOTION_*_PROPERTY` | — | Column-name overrides |
+
+---
+
+## Scripts
+
+| Command | What it does |
+|---|---|
+| `npm test` | Runs the unit tests |
+| `npm run auth:notion` | One-time Notion MCP sign-in. Saves the OAuth client and tokens to Redis |
+| `npm run diagnose:notion` | Lists Notion MCP tools and checks the database columns. `--verbose` prints the schemas; `--create-test` adds a test task |
+| `npm run test:agent -- <message>` | Runs one assistant turn locally, as if the message came from Telegram |
+| `npm run set:webhook -- <url>` | Registers the Telegram webhook URL |
+
+---
+
+## Testing
+
+```bash
+npm test
+```
+
+Tests use Node's built-in test runner with Notion MCP mocked, so they don't touch the network. They check that each database module builds the correct Notion MCP request, and that invalid input (empty titles, bad amounts, unknown categories, malformed dates, non-http URLs) is rejected before anything is written.
+
+For a real end-to-end check, use `npm run test:agent -- <message>`. It writes to your actual Notion databases.
+
+---
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| Bot replies "Notion connection expired" | Run `npm run auth:notion` again |
+| A write fails after you renamed a Notion column | Run `npm run diagnose:notion` and add a `NOTION_*_PROPERTY` override, or rename the column back |
+| Bot doesn't reply at all | Check the webhook with `curl https://api.telegram.org/bot<TOKEN>/getWebhookInfo`, then check the Vercel function logs |
+| Task saved without a due date | Use `today`, `tomorrow` or `YYYY-MM-DD` for task dates |
+
+---
+
+## Limitations
+
+- **Create-only:** no searching, updating or deleting Notion entries yet.
+- **No conversation memory:** every message is handled independently.
+- **No duplicate protection:** if Telegram retries a webhook, the same entry can be created twice.
+- **Times are not stored:** calendar events and task due dates are saved as dates only.

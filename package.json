@@ -1,8 +1,7 @@
 {
   "name": "notion-telebot",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Telegram assistant on Vercel that logs tasks, expenses, events and links to Notion via the hosted Notion MCP",
   "scripts": {
     "test": "node --test --experimental-test-module-mocks",
     "auth:notion": "node scripts/authorizeNotionMcp.js",
