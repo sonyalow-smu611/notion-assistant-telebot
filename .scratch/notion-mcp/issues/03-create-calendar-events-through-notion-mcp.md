@@ -4,9 +4,9 @@
 
 **Blocked by:** 01: Connect to Notion MCP and create tasks through it
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `npm run test:agent -- dinner with Sam this saturday` creates a calendar row with the correct title and the upcoming Saturday's date
-- [ ] The calendar module keeps its exported function name, its validation (empty title, non-YYYY-MM-DD date) and its return shape (id, url, title, date)
-- [ ] The calendar module no longer imports the Notion REST client
-- [ ] Tests cover the calendar MCP payload mapping and both validation errors, with no network calls
+- [x] `npm run test:agent -- dinner with Sam this saturday` creates a calendar row with the correct title and the upcoming Saturday's date
+- [x] The calendar module keeps its exported function name, its validation (empty title, non-YYYY-MM-DD date) and its return shape (id, url, title, date)
+- [x] The calendar module no longer imports the Notion REST client
+- [x] Tests cover the calendar MCP payload mapping and both validation errors, with no network calls

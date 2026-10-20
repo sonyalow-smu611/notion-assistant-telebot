@@ -4,9 +4,9 @@
 
 **Blocked by:** 01: Connect to Notion MCP and create tasks through it
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `npm run test:agent -- spent $12 on lunch` creates a finance row with expense "lunch", amount 12 and category "food"
-- [ ] The finance module keeps its exported function name, its validation (empty expense, non-positive amount, unknown category) and its return shape (id, url, expense, amount, category)
-- [ ] The finance module no longer imports the Notion REST client
-- [ ] Tests cover the finance MCP payload mapping and each validation error, with no network calls
+- [x] `npm run test:agent -- spent $12 on lunch` creates a finance row with expense "lunch", amount 12 and category "food"
+- [x] The finance module keeps its exported function name, its validation (empty expense, non-positive amount, unknown category) and its return shape (id, url, expense, amount, category)
+- [x] The finance module no longer imports the Notion REST client
+- [x] Tests cover the finance MCP payload mapping and each validation error, with no network calls
