@@ -11,7 +11,9 @@ Telegram: set up telebot with bot father
 
 platform.openai: get api keys 
 
-Notion: create connection (need to have api endpoint first to receive ) + get database id from link
+Notion: no integration needed. Run npm run auth:notion once to sign in to the hosted Notion MCP (mcp.notion.com) + get data source ids for each database
+
+Upstash Redis (via Vercel Storage): stores the Notion MCP sign-in. Put KV_REST_API_URL + KV_REST_API_TOKEN in .env and Vercel
 
 
 TERMINAL COMMANDS (package.json)
@@ -21,7 +23,8 @@ TERMINAL COMMANDS (package.json)
 Npm install:
 - dotenv
 - @openai/agents
-- @notionhq/client
+- @modelcontextprotocol/sdk
+- @upstash/redis
 - openai
 - telegraf
 - zod 
@@ -174,15 +177,16 @@ Why it matters:
 CREATING SPECIALISED AGENTS AND CONNECTING TO NOTION 
 
 
-Integrations/notion/client.js:
+Integrations/notion/mcpClient.js:
 
-export const notion = new Client({
-  auth: env.NOTION_API_KEY,
-});
---> endpoint to call notion api 
+export async function callNotionTool(name, args)
+--> opens a fresh connection to the hosted Notion MCP, calls one tool, closes
 
-env.js 
-- add notion api key and task database id 
+Integrations/notion/mcpAuth.js:
+--> OAuth provider; keeps the Notion MCP client + tokens in Upstash Redis
+
+env.js
+- add Upstash KV_REST_API_URL / KV_REST_API_TOKEN and the database data source ids
 
 Agents/triageAgent
 
@@ -211,11 +215,10 @@ Export function createTaskTool() {
 }
 
 Integrations/notion/taskDatabase.js 
-- define object: task properties { title, status, due date }
-- Function buildTaskProperties -- properties: title, status, due date
+- Function buildTaskProperties -- properties: title, category, status, due date (Notion MCP format)
 
 Export async function createTask{
-	await notion.pages.create: create notion task page
+	await callNotionTool('notion-create-pages'): create notion task page
 	return: structured output for agent to confirm task complete 
 }
 

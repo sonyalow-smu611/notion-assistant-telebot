@@ -9,9 +9,12 @@ The assistant uses:
 - Telegram as the user interface.
 - Vercel serverless functions for webhook hosting.
 - OpenAI Agents SDK for agent orchestration, tools, handoffs, and tracing.
-- Notion API for finance, calendar, and task databases.
+- Notion MCP (the hosted server at `https://mcp.notion.com/mcp`) for finance, calendar, task, and links databases.
+- Upstash Redis for the Notion MCP OAuth client and tokens.
 
-Do not introduce MCP servers for Notion. Notion must be accessed directly through the Notion API.
+Notion is accessed through the hosted Notion MCP server via `src/integrations/notion/mcpClient.js`. Do not use the Notion REST API or `@notionhq/client`.
+
+Agents use narrow function tools. Do not expose raw Notion MCP tools to agents; database modules call Notion MCP tools on the tools' behalf.
 
 ## Architecture Rules
 
@@ -48,7 +51,8 @@ Telegram webhook
 -> triageAgent
 -> specialist agent handoff
 -> tool
--> Notion API
+-> src/integrations/notion/*Database.js
+-> Notion MCP
 -> Telegram reply
 ```
 
@@ -109,17 +113,22 @@ Expected mappings:
 financeAgent
 -> addExpenseTool()
 -> src/integrations/notion/financeDatabase.js
--> Notion Finance Database API
+-> Notion MCP notion-create-pages (finance data source)
 
 calendarAgent
 -> createCalendarEventTool()
 -> src/integrations/notion/calendarDatabase.js
--> Notion Calendar Database API
+-> Notion MCP notion-create-pages (calendar data source)
 
 taskManagerAgent
 -> createTaskTool()
 -> src/integrations/notion/taskDatabase.js
--> Notion Tasks Database API
+-> Notion MCP notion-create-pages (tasks data source)
+
+linkCaptureAgent
+-> saveLinkSummaryTool()
+-> src/integrations/notion/linkDatabase.js
+-> Notion MCP notion-create-pages (links data source)
 ```
 
 Ask for confirmation before destructive, broad, or ambiguous writes.
@@ -143,10 +152,14 @@ Use this structure:
 ```txt
 src/integrations/
 ├── notion/
-│   ├── client.js
+│   ├── mcpClient.js
+│   ├── mcpAuth.js
 │   ├── financeDatabase.js
 │   ├── calendarDatabase.js
-│   └── taskDatabase.js
+│   ├── taskDatabase.js
+│   └── linkDatabase.js
+├── upstash/
+│   └── client.js
 ├── telegram/
 │   ├── client.js
 │   ├── parseUpdate.js
@@ -158,7 +171,8 @@ src/integrations/
 
 Integration modules should be boring and specific:
 
-- Notion modules call Notion.
+- Notion modules call Notion MCP.
+- The Upstash module only provides the shared Redis client.
 - Telegram modules parse updates and send messages.
 - OpenAI integration code runs agents or centralizes OpenAI client setup.
 
@@ -181,6 +195,8 @@ Keep `.env.example` updated whenever required environment variables change.
 The backend must remain compatible with Vercel serverless functions.
 
 Assume functions are stateless. Do not rely on in-memory sessions for user state, conversation history, queues, or durable logs.
+
+Open a fresh Notion MCP connection per call. Durable Notion MCP auth state lives in Upstash Redis; re-authorize with `npm run auth:notion`.
 
 If a Telegram request may exceed webhook timing expectations, respond quickly and move long work into an async queue or background workflow.
 
@@ -241,4 +257,4 @@ When adding behavior, prefer focused tests around:
 - Notion database mapping.
 - Telegram update parsing.
 
-Use mocks for Notion, Telegram, and OpenAI in unit tests.
+Use mocks for Notion MCP, Redis, Telegram, and OpenAI in unit tests. Tests run with `npm test` (`node --test` with module mocks).

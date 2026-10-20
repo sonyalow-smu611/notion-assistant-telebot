@@ -4,7 +4,6 @@ import 'dotenv/config';
 const requiredEnv = [
   'TELEGRAM_BOT_TOKEN',
   'OPENAI_API_KEY',
-  'NOTION_API_KEY',
   'NOTION_TASKS_DATA_SOURCE_ID',
   'NOTION_FINANCE_DATA_SOURCE_ID',
   'NOTION_CALENDAR_DATA_SOURCE_ID',
@@ -22,7 +21,6 @@ for (const key of requiredEnv) {
 export const env = {
   TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-  NOTION_API_KEY: process.env.NOTION_API_KEY,
   // Hosted Notion MCP server and the local OAuth callback used by `npm run auth:notion`.
   NOTION_MCP_URL: process.env.NOTION_MCP_URL || 'https://mcp.notion.com/mcp',
   NOTION_MCP_REDIRECT_URI: process.env.NOTION_MCP_REDIRECT_URI || 'http://localhost:3999/callback',

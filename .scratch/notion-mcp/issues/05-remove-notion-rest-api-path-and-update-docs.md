@@ -9,15 +9,15 @@ This includes deleting the Notion webhook receiver route, which only logged even
 - 03: Create calendar events through Notion MCP
 - 04: Save link summaries through Notion MCP
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The Notion REST client module, the `@notionhq/client` dependency, the old task-only diagnostic script and its npm script are removed
-- [ ] The Notion webhook route is deleted, and `NOTION_WEBHOOK_VERIFICATION_TOKEN` is removed from `.env.example`
-- [ ] `NOTION_API_KEY` is no longer required by env config or listed in `.env.example`
-- [ ] AGENTS.md changes:
+- [x] The Notion REST client module, the `@notionhq/client` dependency, the old task-only diagnostic script and its npm script are removed
+- [x] The Notion webhook route is deleted, and `NOTION_WEBHOOK_VERIFICATION_TOKEN` is removed from `.env.example`
+- [x] `NOTION_API_KEY` is no longer required by env config or listed in `.env.example`
+- [x] AGENTS.md changes:
   - It no longer says "Do not introduce MCP servers for Notion". It now says Notion is accessed through the hosted Notion MCP server, that agents use narrow function tools, and that raw Notion MCP tools must not be exposed to agents.
   - The request flow and the integrations tree reflect MCP and the Upstash token store.
-- [ ] The README's flow, project structure, setup steps (Upstash plus `npm run auth:notion`), env vars and notes reflect MCP
-- [ ] The Notion setup lines in the personal notes doc that would now be wrong are updated
-- [ ] A recursive grep for `@notionhq/client`, `NOTION_API_KEY` and `api/notion`, excluding node_modules, returns nothing
-- [ ] `npm test` passes, and `test:agent` still works for task, expense, calendar, link-save and "hello"
+- [x] The README's flow, project structure, setup steps (Upstash plus `npm run auth:notion`), env vars and notes reflect MCP
+- [x] The Notion setup lines in the personal notes doc that would now be wrong are updated
+- [x] A recursive grep for `@notionhq/client`, `NOTION_API_KEY` and `api/notion`, excluding node_modules, returns nothing
+- [x] `npm test` passes, and `test:agent` still works for task, expense, calendar, link-save and "hello"
