@@ -1,64 +1,5 @@
 import { env } from '../../config/env.js';
-import { notion } from './client.js';
-
-async function getCalendarDataSourceProperties() {
-  const dataSource = await notion.dataSources.retrieve({
-    data_source_id: env.NOTION_CALENDAR_DATA_SOURCE_ID,
-  });
-
-  return dataSource.properties || {};
-}
-
-function findPropertyName(properties, configuredName, expectedType) {
-  if (configuredName && properties[configuredName]?.type === expectedType) {
-    return configuredName;
-  }
-
-  const normalizedName = configuredName?.toLowerCase();
-  return Object.entries(properties).find(([name, property]) => (
-    name.toLowerCase() === normalizedName && property.type === expectedType
-  ))?.[0] || Object.entries(properties).find(([, property]) => property.type === expectedType)?.[0];
-}
-
-function buildCalendarProperties({ title, date, dataSourceProperties }) {
-  const titlePropertyName = findPropertyName(
-    dataSourceProperties,
-    env.NOTION_CALENDAR_TITLE_PROPERTY,
-    'title',
-  );
-
-  if (!titlePropertyName) {
-    throw new Error('Calendar data source must have a title property.');
-  }
-
-  const datePropertyName = findPropertyName(
-    dataSourceProperties,
-    env.NOTION_CALENDAR_DATE_PROPERTY,
-    'date',
-  );
-
-  if (!datePropertyName) {
-    throw new Error('Calendar data source must have a date property.');
-  }
-
-  return {
-    [titlePropertyName]: {
-      title: [
-        {
-          type: 'text',
-          text: {
-            content: title,
-          },
-        },
-      ],
-    },
-    [datePropertyName]: {
-      date: {
-        start: date,
-      },
-    },
-  };
-}
+import { callNotionTool } from './mcpClient.js';
 
 export async function createCalendarEvent({
   title,
@@ -75,19 +16,20 @@ export async function createCalendarEvent({
     throw new Error('Calendar event date must be YYYY-MM-DD.');
   }
 
-  const dataSourceProperties = await getCalendarDataSourceProperties();
-  const properties = buildCalendarProperties({
-    title: cleanTitle,
-    date: cleanDate,
-    dataSourceProperties,
-  });
-
-  const page = await notion.pages.create({
+  // Notion MCP takes the title as a plain string and dates as expanded `date:<property>:start` keys.
+  const result = await callNotionTool('notion-create-pages', {
     parent: {
       data_source_id: env.NOTION_CALENDAR_DATA_SOURCE_ID,
     },
-    properties,
+    pages: [{
+      properties: {
+        [env.NOTION_CALENDAR_TITLE_PROPERTY]: cleanTitle,
+        [`date:${env.NOTION_CALENDAR_DATE_PROPERTY}:start`]: cleanDate,
+        [`date:${env.NOTION_CALENDAR_DATE_PROPERTY}:is_datetime`]: 0,
+      },
+    }],
   });
+  const page = result.pages?.[0] || {};
 
   return {
     id: page.id,
