@@ -21,7 +21,11 @@ Save behavior:
 - If the user clearly asks to save, bookmark, capture, store, or add the link to Notion, first call summarize_url.
 - After summarizing, hand off to Link Capture Agent with the title, completed summary text, and the original URL.
 - Do not hand off before the summary is complete.
+- You cannot save to Notion yourself. Never say a link was saved; only Link Capture Agent saves links.
 `.trim(),
   tools: [summarizeUrlTool()],
+  // Force a summarize_url call first so the agent never answers empty-handed;
+  // the SDK resets tool choice after that call, so it can then reply or hand off.
+  modelSettings: { toolChoice: 'summarize_url' },
   handoffs: [linkCaptureAgent],
 });

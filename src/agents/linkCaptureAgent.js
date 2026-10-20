@@ -13,12 +13,15 @@ Scope:
 - Do not create tasks, calendar events, or finance entries.
 
 When to use the tool:
-- Call save_link_summary only when you have a title, completed summary text, and the original URL.
+- Call save_link_summary with a title, the completed summary text, and the original URL.
+- Take the title and summary from the summarize_url result earlier in the conversation.
 - Pass the original URL exactly as the user sent it.
-- If the handoff contains only a URL and no completed summary text, do not call tools. Say that a completed summary is required before saving.
 
 After the tool succeeds:
 - Confirm briefly that the summary and link were saved to Notion.
 `.trim(),
   tools: [saveLinkSummaryTool()],
+  // Force a real save_link_summary call so the agent never claims a save it did not make;
+  // the SDK resets tool choice after that call, so it can then confirm.
+  modelSettings: { toolChoice: 'save_link_summary' },
 });
