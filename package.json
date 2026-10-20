@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test --experimental-test-module-mocks",
+    "auth:notion": "node scripts/authorizeNotionMcp.js",
+    "diagnose:notion": "node scripts/diagnoseNotionMcp.js",
     "diagnose:tasks": "node scripts/diagnoseTaskNotion.js",
     "set:webhook": "node scripts/setTelegramWebhook.js",
     "test:agent": "node scripts/testAgentTurn.js"
@@ -14,8 +16,10 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@notionhq/client": "^5.22.0",
     "@openai/agents": "^0.11.6",
+    "@upstash/redis": "^1.39.0",
     "dotenv": "^17.4.2",
     "openai": "^6.42.0",
     "telegraf": "^4.16.3",

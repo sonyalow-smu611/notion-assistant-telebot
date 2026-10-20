@@ -9,6 +9,8 @@ const requiredEnv = [
   'NOTION_FINANCE_DATA_SOURCE_ID',
   'NOTION_CALENDAR_DATA_SOURCE_ID',
   'NOTION_LINKS_DATA_SOURCE_ID',
+  'KV_REST_API_URL',
+  'KV_REST_API_TOKEN',
 ];
 
 for (const key of requiredEnv) {
@@ -21,6 +23,12 @@ export const env = {
   TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   NOTION_API_KEY: process.env.NOTION_API_KEY,
+  // Hosted Notion MCP server and the local OAuth callback used by `npm run auth:notion`.
+  NOTION_MCP_URL: process.env.NOTION_MCP_URL || 'https://mcp.notion.com/mcp',
+  NOTION_MCP_REDIRECT_URI: process.env.NOTION_MCP_REDIRECT_URI || 'http://localhost:3999/callback',
+  // Upstash Redis (Vercel Marketplace names) stores the Notion MCP OAuth client and tokens.
+  KV_REST_API_URL: process.env.KV_REST_API_URL,
+  KV_REST_API_TOKEN: process.env.KV_REST_API_TOKEN,
   NOTION_TASKS_DATA_SOURCE_ID: process.env.NOTION_TASKS_DATA_SOURCE_ID,
   NOTION_FINANCE_DATA_SOURCE_ID: process.env.NOTION_FINANCE_DATA_SOURCE_ID,
   NOTION_CALENDAR_DATA_SOURCE_ID: process.env.NOTION_CALENDAR_DATA_SOURCE_ID,

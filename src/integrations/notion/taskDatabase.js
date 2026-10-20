@@ -1,146 +1,22 @@
 import { env } from '../../config/env.js';
-import { notion } from './client.js';
+import { callNotionTool } from './mcpClient.js';
 
-async function getTaskDataSourceProperties() {
-  const dataSource = await notion.dataSources.retrieve({
-    data_source_id: env.NOTION_TASKS_DATA_SOURCE_ID,
-  });
-
-  return dataSource.properties || {};
-}
-
-function findPropertyName(properties, configuredName, expectedType) {
-  if (configuredName && properties[configuredName]?.type === expectedType) {
-    return configuredName;
-  }
-
-  return Object.entries(properties).find(([, property]) => property.type === expectedType)?.[0];
-}
-
-function findConfiguredProperty(properties, configuredName, expectedType) {
-  if (configuredName && properties[configuredName]?.type === expectedType) {
-    return configuredName;
-  }
-
-  const normalizedName = configuredName?.toLowerCase();
-  return Object.entries(properties).find(([name, property]) => (
-    name.toLowerCase() === normalizedName && property.type === expectedType
-  ))?.[0];
-}
-
-function buildCategoryProperty(propertyType) {
-  if (propertyType === 'select') {
-    return { select: { name: env.NOTION_TASK_DEFAULT_CATEGORY } };
-  }
-
-  if (propertyType === 'multi_select') {
-    return { multi_select: [{ name: env.NOTION_TASK_DEFAULT_CATEGORY }] };
-  }
-
-  if (propertyType === 'rich_text') {
-    return {
-      rich_text: [
-        {
-          type: 'text',
-          text: {
-            content: env.NOTION_TASK_DEFAULT_CATEGORY,
-          },
-        },
-      ],
-    };
-  }
-
-  return null;
-}
-
-function buildTaskProperties({ title, dueDate, dataSourceProperties }) {
-  const titlePropertyName = findPropertyName(
-    dataSourceProperties,
-    env.NOTION_TASK_TITLE_PROPERTY,
-    'title',
-  );
-
-  if (!titlePropertyName) {
-    throw new Error('Tasks data source must have a Task title property.');
-  }
-
+// Builds the Notion MCP page properties for one task.
+// Notion MCP uses a simplified format: plain strings for title/select, __YES__/__NO__ for checkboxes,
+// and expanded `date:<property>:start` keys for dates.
+function buildTaskProperties({ title, dueDate }) {
   const properties = {
-    [titlePropertyName]: {
-      title: [
-        {
-          type: 'text',
-          text: {
-            content: title,
-          },
-        },
-      ],
-    },
+    [env.NOTION_TASK_TITLE_PROPERTY]: title,
+    [env.NOTION_TASK_CATEGORY_PROPERTY]: env.NOTION_TASK_DEFAULT_CATEGORY,
+    [env.NOTION_TASK_STATUS_PROPERTY]: '__NO__',
   };
-  const applied = {
-    category: null,
-    dueDate: null,
-    status: false,
-  };
-
-  const categoryPropertyName = findConfiguredProperty(
-    dataSourceProperties,
-    env.NOTION_TASK_CATEGORY_PROPERTY,
-    'select',
-  ) || findConfiguredProperty(
-    dataSourceProperties,
-    env.NOTION_TASK_CATEGORY_PROPERTY,
-    'multi_select',
-  ) || findConfiguredProperty(
-    dataSourceProperties,
-    env.NOTION_TASK_CATEGORY_PROPERTY,
-    'rich_text',
-  );
-
-  if (categoryPropertyName) {
-    const categoryProperty = buildCategoryProperty(dataSourceProperties[categoryPropertyName].type);
-
-    if (categoryProperty) {
-      properties[categoryPropertyName] = categoryProperty;
-      applied.category = env.NOTION_TASK_DEFAULT_CATEGORY;
-    }
-  }
-
-  if (!applied.category) {
-    throw new Error('Tasks data source must have a Category select, multi-select, or text property.');
-  }
-
-  const statusPropertyName = findConfiguredProperty(
-    dataSourceProperties,
-    env.NOTION_TASK_STATUS_PROPERTY,
-    'checkbox',
-  );
-
-  if (statusPropertyName) {
-    properties[statusPropertyName] = { checkbox: false };
-  } else {
-    throw new Error('Tasks data source must have a Status checkbox property.');
-  }
-
-  const dueDatePropertyName = findConfiguredProperty(
-    dataSourceProperties,
-    env.NOTION_TASK_DUE_PROPERTY,
-    'date',
-  );
-
-  if (dueDate && !dueDatePropertyName) {
-    throw new Error('Tasks data source must have a Due date date property.');
-  }
 
   if (dueDate) {
-    properties[dueDatePropertyName] = {
-      date: {
-        start: dueDate,
-      },
-    };
-    applied.dueDate = dueDate;
+    properties[`date:${env.NOTION_TASK_DUE_PROPERTY}:start`] = dueDate;
+    properties[`date:${env.NOTION_TASK_DUE_PROPERTY}:is_datetime`] = 0;
   }
 
-  return { properties, applied };
+  return properties;
 }
 
 export async function createTask({
@@ -153,27 +29,23 @@ export async function createTask({
     throw new Error('Task title is required.');
   }
 
-  const dataSourceProperties = await getTaskDataSourceProperties();
-  const { properties, applied } = buildTaskProperties({
-    title: cleanTitle,
-    dueDate,
-    dataSourceProperties,
-  });
-
-  const page = await notion.pages.create({
+  const result = await callNotionTool('notion-create-pages', {
     parent: {
       data_source_id: env.NOTION_TASKS_DATA_SOURCE_ID,
     },
-    properties,
+    pages: [{
+      properties: buildTaskProperties({ title: cleanTitle, dueDate }),
+    }],
   });
+  const page = result.pages?.[0] || {};
 
   // Return structured data so the agent can confirm the exact result.
   return {
     id: page.id,
     url: page.url,
     title: cleanTitle,
-    category: applied.category,
-    dueDate: applied.dueDate,
-    status: applied.status,
+    category: env.NOTION_TASK_DEFAULT_CATEGORY,
+    dueDate: dueDate || null,
+    status: false,
   };
 }
