@@ -50,8 +50,11 @@ const DATA_SOURCES = [
 ];
 
 // True when the fetched schema text mentions the property as a quoted name (plain or JSON-escaped).
+// Notion MCP lists properties named "id"/"url" with a "userDefined:" prefix.
 function hasProperty(schemaText, propertyName) {
-  return schemaText.includes(`"${propertyName}"`) || schemaText.includes(`\\"${propertyName}\\"`);
+  return [propertyName, `userDefined:${propertyName}`].some((name) => (
+    schemaText.includes(`"${name}"`) || schemaText.includes(`\\"${name}\\"`)
+  ));
 }
 
 const tools = await listNotionTools();

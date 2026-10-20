@@ -2,16 +2,7 @@ import { tool } from '@openai/agents';
 import { z } from 'zod';
 import { summarizeLink } from '../integrations/openai/linkSummarizer.js';
 import { classifySourceType, extractLinkContent } from '../integrations/web/linkExtractor.js';
-
-function validateUrl(url) {
-  const parsed = new URL(url);
-
-  if (!['http:', 'https:'].includes(parsed.protocol)) {
-    throw new Error('Only http and https URLs are supported.');
-  }
-
-  return parsed.toString();
-}
+import { validateUrl } from '../utils/validateUrl.js';
 
 function buildFallbackExtraction({ url, error }) {
   const parsedUrl = new URL(url);

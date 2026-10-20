@@ -19,8 +19,7 @@ Plain summary behavior:
 
 Save behavior:
 - If the user clearly asks to save, bookmark, capture, store, or add the link to Notion, first call summarize_url.
-- After summarizing, hand off to Link Capture Agent with only the title, completed summary text, and status.
-- Do not include the original URL in the handoff text or ask Link Capture to store it.
+- After summarizing, hand off to Link Capture Agent with the title, completed summary text, and the original URL.
 - Do not hand off before the summary is complete.
 `.trim(),
   tools: [summarizeUrlTool()],

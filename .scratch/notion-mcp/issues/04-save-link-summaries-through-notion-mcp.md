@@ -16,12 +16,12 @@ The full summary also goes in the page body as markdown content, replacing the R
 
 **Blocked by:** 01: Connect to Notion MCP and create tasks through it
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `npm run test:agent -- save this https://github.com/openai/openai-node` creates one links row with Title, Summary and URL (the exact link) filled in, and the full summary as the page body
-- [ ] A plain URL message with no save request still only replies with a summary and writes nothing to Notion
-- [ ] `save_link_summary` rejects a missing or non-http(s) URL, an empty title and an empty summary
-- [ ] The Link Summary and Link Capture Agent instructions describe passing and saving the URL. No leftover instruction says URLs must not be stored
-- [ ] Env config keeps the link title, summary and URL property names (default `Title`, `Summary`, `URL`) and drops the unused link source-type, domain, date-saved and status property entries
-- [ ] The links module no longer imports the Notion REST client
-- [ ] Tests cover the links MCP payload mapping (including the URL property), the summary cap and the validation errors, with no network calls
+- [x] `npm run test:agent -- save this https://github.com/openai/openai-node` creates one links row with Title, Summary and URL (the exact link) filled in, and the full summary as the page body
+- [x] A plain URL message with no save request still only replies with a summary and writes nothing to Notion
+- [x] `save_link_summary` rejects a missing or non-http(s) URL, an empty title and an empty summary
+- [x] The Link Summary and Link Capture Agent instructions describe passing and saving the URL. No leftover instruction says URLs must not be stored
+- [x] Env config keeps the link title, summary and URL property names (default `Title`, `Summary`, `URL`) and drops the unused link source-type, domain, date-saved and status property entries
+- [x] The links module no longer imports the Notion REST client
+- [x] Tests cover the links MCP payload mapping (including the URL property), the summary cap and the validation errors, with no network calls
