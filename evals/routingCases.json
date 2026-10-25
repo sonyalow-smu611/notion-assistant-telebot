@@ -1,0 +1,36 @@
+[
+  { "text": "https://example.com", "expected": "Link Summary Agent" },
+  { "text": "can you save this to notion https://github.com/vercel/next.js", "expected": "Link Summary Agent" },
+  { "text": "what's this about? https://www.instagram.com/reel/abc123", "expected": "Link Summary Agent" },
+  { "text": "create a task to review my budget tomorrow", "expected": "Task Manager Agent" },
+  { "text": "add a task to call Alex", "expected": "Task Manager Agent" },
+  { "text": "remind me to submit the form", "expected": "Task Manager Agent" },
+  { "text": "I need to renew my passport by Friday, put it on my to-do list", "expected": "Task Manager Agent" },
+  { "text": "spent $12 on lunch", "expected": "Finance Agent" },
+  { "text": "log 25 for a taxi", "expected": "Finance Agent" },
+  { "text": "add an expense for movie tickets, 18 dollars", "expected": "Finance Agent" },
+  { "text": "paid 60 for a birthday gift for mum", "expected": "Finance Agent" },
+  { "text": "baby shower this saturday", "expected": "Calendar Agent" },
+  { "text": "photoshoot on July 22", "expected": "Calendar Agent" },
+  { "text": "I have dinner with Sam tomorrow", "expected": "Calendar Agent" },
+  { "text": "dentist appointment next Tuesday", "expected": "Calendar Agent" },
+  { "text": "hello", "expected": "General Agent" },
+  { "text": "what's the capital of Australia?", "expected": "General Agent" },
+  { "text": "help me write a polite email declining a meeting", "expected": "General Agent" },
+  {
+    "text": "food",
+    "history": [
+      { "role": "user", "text": "spent 12 at the market" },
+      { "role": "assistant", "text": "Which category should I use: food, entertainment, gifts, transport, miscellaneous, or work?" }
+    ],
+    "expected": "Finance Agent"
+  },
+  {
+    "text": "the 22nd",
+    "history": [
+      { "role": "user", "text": "add my photoshoot to the calendar" },
+      { "role": "assistant", "text": "What date is the photoshoot?" }
+    ],
+    "expected": "Calendar Agent"
+  }
+]

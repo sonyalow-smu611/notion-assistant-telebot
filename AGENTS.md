@@ -10,7 +10,7 @@ The assistant uses:
 - Vercel serverless functions for webhook hosting.
 - OpenAI Agents SDK for agent orchestration, tools, handoffs, and tracing.
 - Notion MCP (the hosted server at `https://mcp.notion.com/mcp`) for finance, calendar, task, and links databases.
-- Upstash Redis for the Notion MCP OAuth client and tokens.
+- Upstash Redis for the Notion MCP OAuth client and tokens, recent chat history, and handled Telegram update IDs.
 
 Notion is accessed through the hosted Notion MCP server via `src/integrations/notion/mcpClient.js`. Do not use the Notion REST API or `@notionhq/client`.
 

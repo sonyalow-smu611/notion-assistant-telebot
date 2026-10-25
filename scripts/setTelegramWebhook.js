@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { env } from '../src/config/env.js';
 import { telegramBot } from '../src/integrations/telegram/client.js';
 
 // This script sets the Telegram webhook URL for receiving updates from Telegram. 
@@ -8,6 +9,6 @@ if (!webhookUrl) {
   throw new Error('Usage: node scripts/setTelegramWebhook.js <webhook-url>');
 }
 
-await telegramBot.telegram.setWebhook(webhookUrl);
+await telegramBot.telegram.setWebhook(webhookUrl, { secret_token: env.TELEGRAM_WEBHOOK_SECRET });
 console.log(`Telegram webhook set to ${webhookUrl}`);
 

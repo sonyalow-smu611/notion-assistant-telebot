@@ -3,6 +3,8 @@ import 'dotenv/config';
 
 const requiredEnv = [
   'TELEGRAM_BOT_TOKEN',
+  'TELEGRAM_WEBHOOK_SECRET',
+  'TELEGRAM_ALLOWED_USER_IDS',
   'OPENAI_API_KEY',
   'NOTION_TASKS_DATA_SOURCE_ID',
   'NOTION_FINANCE_DATA_SOURCE_ID',
@@ -20,6 +22,10 @@ for (const key of requiredEnv) {
 
 export const env = {
   TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+  // Sent by Telegram in X-Telegram-Bot-Api-Secret-Token; set it on the webhook with `npm run set:webhook`.
+  TELEGRAM_WEBHOOK_SECRET: process.env.TELEGRAM_WEBHOOK_SECRET,
+  // Comma-separated Telegram user IDs allowed to use the bot.
+  TELEGRAM_ALLOWED_USER_IDS: process.env.TELEGRAM_ALLOWED_USER_IDS.split(',').map((id) => id.trim()).filter(Boolean),
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   // Hosted Notion MCP server and the local OAuth callback used by `npm run auth:notion`.
   NOTION_MCP_URL: process.env.NOTION_MCP_URL || 'https://mcp.notion.com/mcp',

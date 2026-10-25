@@ -1,4 +1,7 @@
+import { assertPublicUrl } from '../../utils/validateUrl.js';
+
 const MAX_TEXT_LENGTH = 12000;
+const MAX_REDIRECTS = 5;
 
 function decodeHtml(text = '') {
   return text
@@ -109,6 +112,32 @@ export function extractUrls(text) {
   return [...new Set(matches.map((url) => url.replace(/[),.;!?]+$/, '')))];
 }
 
+// Fetches a page, following redirects by hand so every hop is checked for a public address.
+async function fetchPublicPage(url) {
+  let currentUrl = url;
+
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
+    await assertPublicUrl(currentUrl);
+
+    const response = await fetch(currentUrl, {
+      redirect: 'manual',
+      headers: {
+        accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8',
+        'user-agent': 'Mozilla/5.0 notion-telebot link capture',
+      },
+    });
+    const location = response.headers.get('location');
+
+    if (response.status < 300 || response.status >= 400 || !location) {
+      return response;
+    }
+
+    currentUrl = new URL(location, currentUrl);
+  }
+
+  throw new Error('Too many redirects.');
+}
+
 export async function extractLinkContent(rawUrl) {
   const url = new URL(rawUrl);
   const sourceType = classifySourceType(url);
@@ -118,12 +147,7 @@ export async function extractLinkContent(rawUrl) {
     readme = await fetchGithubReadme(url);
   }
 
-  const response = await fetch(url, {
-    headers: {
-      accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8',
-      'user-agent': 'Mozilla/5.0 notion-telebot link capture',
-    },
-  });
+  const response = await fetchPublicPage(url);
 
   if (!response.ok) {
     throw new Error(`Fetch failed with status ${response.status}.`);
